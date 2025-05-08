@@ -9,7 +9,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -35,7 +34,7 @@ public class Notification {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
-    private NotificationStatus status;
+    private NotificationStatus status = NotificationStatus.PENDING;
 
     @Column(name = "message", columnDefinition = "TEXT")
     private String message;
@@ -52,7 +51,7 @@ public class Notification {
     private String errorMessage;
 
     @Column(name = "sent_at")
-    private LocalDateTime sentAt;
+    private Instant sentAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)

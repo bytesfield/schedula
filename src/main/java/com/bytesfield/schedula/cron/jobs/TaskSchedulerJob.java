@@ -1,11 +1,12 @@
 package com.bytesfield.schedula.cron.jobs;
 
+import com.bytesfield.schedula.dtos.requests.TaskResponse;
 import com.bytesfield.schedula.models.entities.Task;
-import com.bytesfield.schedula.models.enums.TaskStatus;
+import com.bytesfield.schedula.producers.ScheduleTaskProducer;
 import com.bytesfield.schedula.repositories.TaskRepository;
+import com.bytesfield.schedula.utils.mappers.TaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -18,18 +19,19 @@ import java.util.List;
 public class TaskSchedulerJob {
 
     private final TaskRepository taskRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final ScheduleTaskProducer scheduleTaskProducer;
+    private final TaskMapper taskMapper;
 
     @Scheduled(fixedRate = 30000) // Check every 30 seconds
     public void scheduleTasks() {
         List<Task> dueTasks = taskRepository.findDueTasks(Instant.now());
 
         dueTasks.forEach(task -> {
-            // Sends it to the message queue
-            rabbitTemplate.convertAndSend("taskExchange", "task.routingkey", task);
+            TaskResponse taskResponse = taskMapper.toResponse(task);
+            
+            scheduleTaskProducer.sendTask(taskResponse);
 
-            task.setStatus(TaskStatus.QUEUED);
-            taskRepository.save(task);
+            taskRepository.markAsQueued(task.getId());
         });
     }
 }

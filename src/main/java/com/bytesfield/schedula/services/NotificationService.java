@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Objects;
 
 @Service
@@ -26,12 +26,13 @@ public class NotificationService {
     public void sendNotification(Notification notification) throws Exception {
         try {
             if (Objects.requireNonNull(notification.getType()) == NotificationType.EMAIL) {
-                emailService.sendEmail(buidSendEMailData(notification));
+                log.info("Sending email notification to {}", notification.getTask().getUser().getEmail());
+                //emailService.sendEmail(buidSendEMailData(notification));
             } else {
                 throw new ConflictException("Invalid notification type");
             }
             notification.setStatus(NotificationStatus.SENT);
-            notification.setSentAt(LocalDateTime.now());
+            notification.setSentAt(Instant.now());
             notification.setAttemptNumber(notification.getAttemptNumber() + 1);
         } catch (Exception ex) {
             Helper.retryWithBackoff(() -> {

@@ -3,6 +3,7 @@ package com.bytesfield.schedula.services;
 import com.bytesfield.schedula.dtos.UserDto;
 import com.bytesfield.schedula.exceptions.ConflictException;
 import com.bytesfield.schedula.exceptions.InvalidCredentialsException;
+import com.bytesfield.schedula.exceptions.UserNotFoundException;
 import com.bytesfield.schedula.models.entities.User;
 import com.bytesfield.schedula.models.enums.UserRole;
 import com.bytesfield.schedula.repositories.UserRepository;
@@ -17,7 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
-    
+
     public UserDto getUserProfile(String email) {
         User user = getUserByEmail(email);
 
@@ -25,7 +26,7 @@ public class UserService {
     }
 
     public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findByEmail(email).orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     public UserDto registerUser(RegisterRequest data) {

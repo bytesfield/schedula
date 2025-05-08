@@ -1,5 +1,6 @@
 package com.bytesfield.schedula.models.entities;
 
+import com.bytesfield.schedula.models.enums.NotificationType;
 import com.bytesfield.schedula.models.enums.ScheduleType;
 import com.bytesfield.schedula.models.enums.TaskStatus;
 import com.bytesfield.schedula.models.enums.TaskType;
@@ -28,7 +29,7 @@ public class Task {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "title", nullable = false, length = 255)
+    @Column(name = "title", nullable = false)
     private String title;
 
     @Enumerated(EnumType.STRING)
@@ -38,12 +39,16 @@ public class Task {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "cron_expression", nullable = false, length = 255)
+    @Column(name = "cron_expression", nullable = false)
     private String cronExpression;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     private TaskStatus status = TaskStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_type", nullable = false, length = 50)
+    private NotificationType notificationType = NotificationType.EMAIL;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "schedule_type", nullable = false, length = 50)
