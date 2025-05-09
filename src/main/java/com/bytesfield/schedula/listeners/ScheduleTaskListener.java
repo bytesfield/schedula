@@ -101,9 +101,9 @@ public class ScheduleTaskListener {
         }
 
         notification.setTask(task);
+        notification.setAttemptNumber(0);
         notification.setType(task.getNotificationType());
         notification.setStatus(NotificationStatus.PENDING);
-        notification.setAttemptNumber(1);
 
         Notification savedNotification = notificationRepository.save(notification);
 

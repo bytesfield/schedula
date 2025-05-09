@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Task Executed</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+<div style="max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px;">
+    <h2>
+        Hi, <span th:text="${userName}">User</span> 👋
+    </h2>
+
+    <p>
+        This is to inform you that your task
+        <strong th:text="${taskTitle}">Task Title</strong>
+        is executed successfully.
+        on <strong>Schedula</strong>! We're excited!!!
+    </p>
+
+    <p>Need help? Just reply to this email or visit our support page.</p>
+
+    <hr>
+    <p style="font-size: 12px; color: #999;">© 2025 Schedula. All rights reserved.</p>
+</div>
+</body>
+</html>

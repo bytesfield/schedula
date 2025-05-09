@@ -3,6 +3,7 @@ package com.bytesfield.schedula.services;
 import com.bytesfield.schedula.exceptions.ConflictException;
 import com.bytesfield.schedula.models.SendEmailData;
 import com.bytesfield.schedula.models.entities.Notification;
+import com.bytesfield.schedula.models.entities.User;
 import com.bytesfield.schedula.models.enums.NotificationStatus;
 import com.bytesfield.schedula.models.enums.NotificationType;
 import com.bytesfield.schedula.repositories.NotificationRepository;
@@ -12,60 +13,68 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Objects;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationService {
-
     private final EmailService emailService;
 
     private final NotificationRepository notificationRepository;
 
-    public void sendNotification(Notification notification) throws Exception {
+    public void sendNotification(Notification notification) {
         try {
-            if (Objects.requireNonNull(notification.getType()) == NotificationType.EMAIL) {
-                log.info("Sending email notification to {}", notification.getTask().getUser().getEmail());
-                //emailService.sendEmail(buidSendEMailData(notification));
-            } else {
-                throw new ConflictException("Invalid notification type");
-            }
-            notification.setStatus(NotificationStatus.SENT);
-            notification.setSentAt(Instant.now());
-            notification.setAttemptNumber(notification.getAttemptNumber() + 1);
-        } catch (Exception ex) {
             Helper.retryWithBackoff(() -> {
-                handleFailure(notification, ex);
+                attemptSend(notification);
                 return null;
             }, 3, 1000);
+
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(Instant.now());
+        } catch (Exception ex) {
+            handleFailure(notification, ex);
         } finally {
+            notification.setAttemptNumber(notification.getAttemptNumber() + 1);
             notificationRepository.save(notification);
         }
     }
 
+    private void attemptSend(Notification notification) {
+        User user = notification.getTask().getUser();
 
-    private void handleFailure(Notification notification, Exception ex) throws Exception {
+        if (notification.getType() != NotificationType.EMAIL) {
+            throw new ConflictException("Invalid notification type");
+        }
+
+        log.info("Sending email notification to {}", user.getEmail());
+
+        emailService.sendEmail(buidSendEMailData(notification, user));
+    }
+
+    private void handleFailure(Notification notification, Exception ex) {
         log.error("Notification failed: {}", ex.getMessage());
 
         notification.setStatus(NotificationStatus.FAILED);
-        notification.setAttemptNumber(notification.getAttemptNumber() + 1);
         notification.setErrorMessage(ex.getMessage());
         notification.setResponseStatus(500);
         notification.setResponseBody(ex.getMessage());
-
-        notificationRepository.save(notification);
-
-        sendNotification(notification);
     }
 
-    private SendEmailData buidSendEMailData(Notification notification) {
-        SendEmailData sendEmailData = new SendEmailData();
+    private SendEmailData buidSendEMailData(Notification notification, User user) {
+        SendEmailData data = new SendEmailData();
 
-        sendEmailData.setRecipient(notification.getTask().getUser().getEmail());
-        sendEmailData.setSubject("Task Executed Notification");
-        sendEmailData.setTemplateName("email_template"); //Add your email template name here
+        Map<String, Object> templateData = new HashMap<>();
 
-        return sendEmailData;
+        templateData.put("userName", user.getFirstName());
+        templateData.put("taskTitle", notification.getTask().getTitle());
+
+        data.setRecipient(user.getEmail());
+        data.setSubject("Task Executed Notification");
+        data.setTemplateName("emails/schedule-task-executed-mail");
+        data.setTemplateVariables(templateData);
+
+        return data;
     }
 }

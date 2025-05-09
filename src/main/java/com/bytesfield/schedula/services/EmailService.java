@@ -40,19 +40,12 @@ public class EmailService {
             provider.sendEmail(data);
         } catch (Exception e) {
             log.error("Failed to send email: {}", e.getMessage(), e);
+            
             throw new EmailProcessingException("Email delivery failed", e);
         }
     }
 
     private String getEmailContent(SendEmailData data, Context context) {
-        if (data.getHtmlContent() != null) {
-            return data.getHtmlContent(); // For raw HTML content
-        }
-
-        if (data.getTextContent() != null) {
-            return data.getTextContent(); // For raw text content
-        }
-
         if (data.getTemplateName() == null) {
             throw new IllegalArgumentException("Template name is required for email processing");
         }

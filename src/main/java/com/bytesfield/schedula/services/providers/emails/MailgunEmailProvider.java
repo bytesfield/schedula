@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.concurrent.TimeUnit;
 
@@ -38,7 +39,7 @@ public class MailgunEmailProvider implements EmailProvider {
         try {
             MailgunMessagesApi mailgunMessagesApi = MailgunClient.config(apiKey)
                     .logLevel(Logger.Level.NONE)
-                    .retryer(new Retryer.Default())
+                    .retryer(Retryer.NEVER_RETRY)
                     .logger(new Logger.NoOpLogger())
                     .errorDecoder(new ErrorDecoder.Default())
                     .options(new Request.Options(10, TimeUnit.SECONDS, 60, TimeUnit.SECONDS, true))
@@ -53,25 +54,32 @@ public class MailgunEmailProvider implements EmailProvider {
 
             Helper.retryWithBackoff(() -> {
                 MessageResponse response = mailgunMessagesApi.sendMessage(domain, messageBuilder.build());
+
                 log.info("Mailgun email sent: id={}, message={}", response.getId(), response.getMessage());
+
                 return response;
             }, 3, 500);
 
 
         } catch (Exception e) {
             log.error("Failed to send email via Mailgun: {}", e.getMessage(), e);
-            throw new EmailProcessingException("Failed to send email via SMTP", e);
+
+            throw new EmailProcessingException("Failed to send email via Mailgun", e);
         }
     }
+
 
     private void buildMessageContent(SendEmailData data, Message.MessageBuilder builder) {
-        if (data.getHtmlContent() != null) {
-            builder.html(data.getHtmlContent());
-        } else if (data.getTextContent() != null) {
-            builder.text(data.getTextContent());
-        } else {
-            throw new IllegalArgumentException("No email content provided (text or HTML).");
+        boolean hasHtml = StringUtils.hasText(data.getHtmlContent());
+        boolean hasText = StringUtils.hasText(data.getTextContent());
+
+        if (!hasHtml && !hasText) {
+            throw new IllegalArgumentException("No email content provided: both HTML and text content are empty.");
         }
 
+        if (hasHtml) builder.html(data.getHtmlContent());
+
+        if (hasText) builder.text(data.getTextContent());
     }
+
 }

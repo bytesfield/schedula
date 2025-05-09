@@ -32,26 +32,38 @@ public class Helper {
                 attempt++;
                 return task.call();
             } catch (Exception e) {
-                if (attempt >= maxRetries) {
+                if (!isRetryable(e) || attempt >= maxRetries) {
                     throw e;
                 }
 
                 long backoffTime = delayMs * (long) Math.pow(2, (double) attempt - 1);
-
-                String message = String.format("Attempt %d failed: %s. Backing off for %d ms before retrying...", attempt, e.getMessage(), backoffTime);
-
-                log.error(message);
+                String message = String.format(
+                        "Attempt %d failed: %s. Backing off for %d ms before retrying...",
+                        attempt, e.getMessage(), backoffTime
+                );
+                log.warn(message);
 
                 try {
                     Thread.sleep(backoffTime);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-
                     throw new DefaultException("Retry interrupted", ie);
                 }
             }
         }
     }
+
+    private static boolean isRetryable(Exception ex) {
+        // Feign 5xx errors or timeouts are retryable
+        if (ex instanceof feign.FeignException feignEx) {
+            int status = feignEx.status();
+            return status >= 500 && status < 600;
+        }
+
+        // Network/IO issues
+        return ex instanceof java.io.IOException;
+    }
+
 
     public static long secondsToMilliseconds(long seconds) {
         return seconds * 1000L;
