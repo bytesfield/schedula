@@ -6,14 +6,15 @@ import com.bytesfield.schedula.services.AuthService;
 import com.bytesfield.schedula.services.UserService;
 import com.bytesfield.schedula.utils.responses.ApiResponse;
 import com.bytesfield.schedula.validations.LoginRequest;
+import com.bytesfield.schedula.validations.RefreshTokenRequest;
 import com.bytesfield.schedula.validations.RegisterRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -41,5 +42,19 @@ public class AuthController {
         LoginDto user = authService.loginUser(requestBody);
 
         return ResponseEntity.ok(new ApiResponse<>("User registration successfully.", user));
+    }
+
+    @GetMapping("/logout")
+    public ResponseEntity<ApiResponse<Object>> logout(@AuthenticationPrincipal UserDetails userDetails, HttpServletRequest request) {
+        authService.logoutUser(userDetails, request);
+
+        return ResponseEntity.ok(new ApiResponse<>("Logout successfully."));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<ApiResponse<LoginDto>> login(@Valid @RequestBody RefreshTokenRequest requestBody, @AuthenticationPrincipal UserDetails userDetails) {
+        LoginDto response = authService.refreshToken(userDetails, requestBody.getToken());
+
+        return ResponseEntity.ok(new ApiResponse<>("Token refreshed successfully.", response));
     }
 }

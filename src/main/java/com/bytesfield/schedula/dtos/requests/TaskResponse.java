@@ -12,7 +12,7 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TaskResponse {
 
-    private Integer id;
+    private int id;
     private TaskType type;
     private String scheduleType;
     private String cronExpression;
@@ -22,6 +22,6 @@ public class TaskResponse {
     private Instant triggerTime;
     private Map<String, Object> payload;
     private TaskStatus status;
-    private Integer retryCount;
+    private int retryCount;
     private Instant createdAt;
 }

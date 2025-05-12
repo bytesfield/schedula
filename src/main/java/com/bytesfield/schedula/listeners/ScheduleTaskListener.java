@@ -2,7 +2,6 @@ package com.bytesfield.schedula.listeners;
 
 import com.bytesfield.schedula.config.rabbitmq.TaskRabbitMQConfig;
 import com.bytesfield.schedula.dtos.requests.TaskResponse;
-import com.bytesfield.schedula.exceptions.ResourceNotFoundException;
 import com.bytesfield.schedula.models.entities.Notification;
 import com.bytesfield.schedula.models.entities.Task;
 import com.bytesfield.schedula.models.enums.NotificationStatus;
@@ -48,7 +47,9 @@ public class ScheduleTaskListener {
 
         Task task = getTask(taskId);
 
-        scheduleTask(task);
+        if (task != null) {
+            scheduleTask(task);
+        }
     }
 
 
@@ -93,7 +94,7 @@ public class ScheduleTaskListener {
         }
     }
 
-    private void executeTask(Task task) throws Exception {
+    private void executeTask(Task task) {
         Notification notification = new Notification();
 
         if (task.getNotificationType() == null) {
@@ -124,8 +125,13 @@ public class ScheduleTaskListener {
     }
 
     private Task getTask(int id) {
-        return taskRepository.findByIdWithUser(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+        Task task = taskRepository.findByIdWithUser(id);
+
+        if (task == null) {
+            log.warn("Task not found. Discarding message.");
+        }
+
+        return task;
     }
 
     private void retryTaskIfNeeded(Task task) {

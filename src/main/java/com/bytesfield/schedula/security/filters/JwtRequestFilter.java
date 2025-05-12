@@ -1,6 +1,9 @@
 package com.bytesfield.schedula.security.filters;
 
+import com.bytesfield.schedula.models.enums.JwtTokenType;
 import com.bytesfield.schedula.services.JwtService;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.IOException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,30 +30,64 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain filterChain)
+    protected void doFilterInternal(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain filterChain)
             throws ServletException, IOException, java.io.IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        String token = extractToken(request);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwt = authHeader.substring(7);
-        String username = jwtService.extractUsername(jwt);
+        try {
+            String username = jwtService.extractUsername(token, JwtTokenType.ACCESS);
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+            this.handleAccessTokenInvalidation(token, response);
 
-            // Check if the JWT is valid and if the user details are not null
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                String cachedAccessToken = jwtService.getCachedAccessToken(username);
+
+                if (cachedAccessToken == null || !cachedAccessToken.equals(token)) {
+                    throw new JwtException("Token is invalid or expired");
+                }
+
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+                // Check if the JWT is valid and if the user details are not null
+                if (jwtService.isTokenValid(token, JwtTokenType.ACCESS, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+        } catch (ExpiredJwtException ex) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
+            return;
+        } catch (Exception ex) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
+            return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+
+        return null;
+    }
+
+    private void handleAccessTokenInvalidation(String token, HttpServletResponse response) throws java.io.IOException {
+        String jwtId = jwtService.extractJwtId(token, JwtTokenType.ACCESS);
+
+        if (jwtService.isAccessTokenInvalidated(jwtId)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has been invalidated. Please login again.");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        }
     }
 }

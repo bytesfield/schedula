@@ -76,4 +76,8 @@ public class User {
     public boolean isPasswordValid(String loginPassword) {
         return password.equals(Helper.hashPassword(loginPassword));
     }
+
+    public void markAsActive() {
+        this.setIsActive(true);
+    }
 }
