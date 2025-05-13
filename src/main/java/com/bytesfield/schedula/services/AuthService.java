@@ -6,6 +6,7 @@ import com.bytesfield.schedula.exceptions.ConflictException;
 import com.bytesfield.schedula.exceptions.InvalidCredentialsException;
 import com.bytesfield.schedula.models.entities.User;
 import com.bytesfield.schedula.models.enums.JwtTokenType;
+import com.bytesfield.schedula.services.utils.JwtService;
 import com.bytesfield.schedula.validations.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.userdetails.UserDetails;

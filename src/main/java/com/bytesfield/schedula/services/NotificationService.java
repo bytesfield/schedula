@@ -7,6 +7,7 @@ import com.bytesfield.schedula.models.entities.User;
 import com.bytesfield.schedula.models.enums.NotificationStatus;
 import com.bytesfield.schedula.models.enums.NotificationType;
 import com.bytesfield.schedula.repositories.NotificationRepository;
+import com.bytesfield.schedula.services.utils.EmailService;
 import com.bytesfield.schedula.utils.Helper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

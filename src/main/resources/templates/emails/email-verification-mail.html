@@ -6,14 +6,21 @@
 </head>
 <body style="font-family: Arial, sans-serif; color: #333;">
 <div style="max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px;">
-    <h2>Welcome, <span th:text="${name}">User</span> 👋</h2>
-    <p>Thanks for joining <strong>Schedula</strong>! We're excited to have you on board.</p>
+    <h2>Welcome, <span th:text="${userName}">User</span> 👋</h2>
 
-    <p>Your registered email is: <strong th:text="${email}">email@example.com</strong></p>
+    <p>Thanks for joining <strong>Schedula</strong>! We're excited to have you on board.</p>
 
     <p>You can now start scheduling smarter and staying productive.</p>
 
-    <p>Need help? Just reply to this email or visit our support page.</p>
+    <p>
+        To verify your email, click this link:
+        <a th:href="${verificationUrl}"><span>Verify Email</span></a>
+    </p>
+
+    <p>
+        Or copy this link and paste it into your browser:<br>
+        <span th:text="${verificationUrl}">https://example.com/verify</span>
+    </p>
 
     <hr>
     <p style="font-size: 12px; color: #999;">© 2025 Schedula. All rights reserved.</p>

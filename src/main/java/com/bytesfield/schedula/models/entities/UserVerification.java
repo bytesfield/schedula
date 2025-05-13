@@ -1,5 +1,8 @@
 package com.bytesfield.schedula.models.entities;
 
+import com.bytesfield.schedula.models.enums.UserVerificationChannel;
+import com.bytesfield.schedula.models.enums.UserVerificationStatus;
+import com.bytesfield.schedula.models.enums.UserVerificationType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,13 +27,13 @@ public class UserVerification {
     private User user;
 
     @Column(name = "type", nullable = false, length = 50)
-    private String type;
+    private UserVerificationType type;
 
     @Column(name = "channel", nullable = false, length = 50)
-    private String channel;
+    private UserVerificationChannel channel;
 
     @Column(name = "status", nullable = false, length = 50)
-    private String status;
+    private UserVerificationStatus status;
 
     @Column(name = "verified_at")
     private Instant verifiedAt;

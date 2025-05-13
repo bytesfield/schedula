@@ -1,7 +1,7 @@
 package com.bytesfield.schedula.security.filters;
 
 import com.bytesfield.schedula.models.enums.JwtTokenType;
-import com.bytesfield.schedula.services.JwtService;
+import com.bytesfield.schedula.services.utils.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.IOException;

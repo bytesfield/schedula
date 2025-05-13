@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.concurrent.Callable;
 
@@ -67,5 +68,20 @@ public class Helper {
 
     public static long secondsToMilliseconds(long seconds) {
         return seconds * 1000L;
+    }
+
+    public static String generateUniqueCharacters(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+
+        if (length < 1) throw new IllegalArgumentException("Length must be at least 1");
+
+        StringBuilder sb = new StringBuilder(length);
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(characters.length());
+            sb.append(characters.charAt(index));
+        }
+        return sb.toString();
     }
 }

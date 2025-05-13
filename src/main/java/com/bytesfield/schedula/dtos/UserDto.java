@@ -2,10 +2,7 @@ package com.bytesfield.schedula.dtos;
 
 import com.bytesfield.schedula.models.entities.User;
 import com.bytesfield.schedula.models.enums.UserRole;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.Instant;
 
@@ -13,6 +10,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Getter
 @Setter
+@NoArgsConstructor
 public class UserDto {
     private String firstName;
     private String lastName;
