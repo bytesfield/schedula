@@ -3,7 +3,7 @@ package com.bytesfield.schedula.services;
 import com.bytesfield.schedula.dtos.requests.TaskRequest;
 import com.bytesfield.schedula.dtos.requests.TaskResponse;
 import com.bytesfield.schedula.dtos.requests.UpdateTaskRequest;
-import com.bytesfield.schedula.exceptions.DefaultException;
+import com.bytesfield.schedula.exceptions.ConflictException;
 import com.bytesfield.schedula.exceptions.InvalidScheduleException;
 import com.bytesfield.schedula.exceptions.ResourceNotFoundException;
 import com.bytesfield.schedula.exceptions.UserNotFoundException;
@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ServerErrorException;
 
 import java.time.Instant;
 import java.util.List;
@@ -51,15 +52,13 @@ public class TaskService {
         } catch (Exception e) {
             log.error("Error while creating task: {}", e.getMessage(), e);
 
-            if (e instanceof InvalidScheduleException) {
-                throw new InvalidScheduleException(e.getMessage());
+            if (e instanceof InvalidScheduleException || e instanceof UserNotFoundException) {
+                throw e;
             }
 
-            if (e instanceof UserNotFoundException) {
-                throw new UserNotFoundException(e.getMessage());
-            }
+            log.error("Error while creating task: {}", e.getMessage(), e);
 
-            throw new DefaultException("Something went wrong. Try again later.", e);
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
         }
     }
 
@@ -91,9 +90,19 @@ public class TaskService {
     }
 
     public TaskResponse getTask(UserDetails userDetail, int id) {
-        Task task = getUserTaskById(userDetail, id);
+        try {
+            Task task = getUserTaskById(userDetail, id);
 
-        return taskMapper.toResponse(task);
+            return taskMapper.toResponse(task);
+        } catch (Exception e) {
+            log.error("Error while getting task: {}", e.getMessage(), e);
+
+            if (e instanceof ResourceNotFoundException || e instanceof ConflictException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     private Task getUserTaskById(UserDetails userDetails, int id) {
@@ -109,26 +118,58 @@ public class TaskService {
     }
 
     public void deleteTask(UserDetails userDetail, int id) {
-        Task task = getUserTaskById(userDetail, id);
+        try {
+            Task task = getUserTaskById(userDetail, id);
 
-        taskRepository.delete(task);
+            taskRepository.delete(task);
+
+        } catch (Exception e) {
+            log.error("Error while deleting task: {}", e.getMessage(), e);
+
+            if (e instanceof ResourceNotFoundException || e instanceof ConflictException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     public TaskResponse updateTask(UserDetails userDetail, int id, UpdateTaskRequest request) {
-        Task task = getUserTaskById(userDetail, id);
+        try {
+            Task task = getUserTaskById(userDetail, id);
 
-        taskMapper.updateEntity(request, task);
+            taskMapper.updateEntity(request, task);
 
-        Task updatedTask = taskRepository.save(task);
+            Task updatedTask = taskRepository.save(task);
 
-        return taskMapper.toResponse(updatedTask);
+            return taskMapper.toResponse(updatedTask);
+        } catch (Exception e) {
+            log.error("Error while updating task: {}", e.getMessage(), e);
+
+            if (e instanceof ResourceNotFoundException || e instanceof ConflictException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     public List<TaskResponse> getUserTasks(UserDetails userDetail) {
-        User user = this.getUserByEmail(userDetail.getUsername());
+        try {
+            User user = this.getUserByEmail(userDetail.getUsername());
 
-        List<Task> tasks = taskRepository.findUserTasks(user);
+            List<Task> tasks = taskRepository.findUserTasks(user);
 
-        return taskMapper.toResponseList(tasks);
+            return taskMapper.toResponseList(tasks);
+
+        } catch (Exception e) {
+            log.error("Error while deleting task: {}", e.getMessage(), e);
+
+            if (e instanceof ResourceNotFoundException || e instanceof ConflictException || e instanceof UserNotFoundException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 }

@@ -1,11 +1,13 @@
 package com.bytesfield.schedula.utils.security;
 
 import com.bytesfield.schedula.exceptions.DefaultException;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
+@Slf4j
 public class EncryptionUtil {
     private static final String ALGORITHM = "AES";
     // 16 chars = 128-bit key
@@ -29,6 +31,7 @@ public class EncryptionUtil {
             byte[] encrypted = cipher.doFinal(token.getBytes());
             return Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception e) {
+            log.error("Error while encrypting token: {}", e.getMessage(), e);
             throw new DefaultException("Error while encrypting token", e);
         }
     }
@@ -42,6 +45,7 @@ public class EncryptionUtil {
             byte[] decrypted = cipher.doFinal(decoded);
             return new String(decrypted);
         } catch (Exception e) {
+            log.error("Error while decrypting token: {}", e.getMessage(), e);
             throw new DefaultException("Error while decrypting token", e);
         }
     }

@@ -31,13 +31,14 @@ public class SecurityConfig {
         this.customAuthenticationEntryPoint = new CustomAuthenticationEntryPoint();
 
     }
-
+    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                                 .requestMatchers("/api/v1/auth/**").permitAll()
+                                .requestMatchers("/api/v1/email-verification/**").permitAll()
 //                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 //                        .requestMatchers("/api/v1/users/**").hasRole("USER")
                                 .anyRequest().authenticated()

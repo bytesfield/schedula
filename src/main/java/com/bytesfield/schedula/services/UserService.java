@@ -19,12 +19,16 @@ import com.bytesfield.schedula.utils.security.EncryptionUtil;
 import com.bytesfield.schedula.validations.RegisterRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ServerErrorException;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -37,9 +41,19 @@ public class UserService {
     private String emailVerificationExpiryInSeconds;
 
     public UserDto getUserProfile(String email) {
-        User user = getUserByEmail(email);
+        try {
+            User user = getUserByEmail(email);
 
-        return new UserDto(user);
+            return new UserDto(user);
+        } catch (Exception e) {
+            if (e instanceof ConflictException || e instanceof UserNotFoundException) {
+                throw e;
+            }
+
+            log.error("Error while getting user profile: {}", e.getMessage(), e);
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     public User getUserByEmail(String email) {
@@ -48,15 +62,25 @@ public class UserService {
 
     @Transactional
     public UserDto registerUser(RegisterRequest data) {
-        ensurePasswordMatches(data.getPassword(), data.getConfirmPassword());
+        try {
+            ensurePasswordMatches(data.getPassword(), data.getConfirmPassword());
 
-        ensureUserDoesNotExist(data.getEmail(), data.getPhoneNumber());
+            ensureUserDoesNotExist(data.getEmail(), data.getPhoneNumber());
 
-        UserDto userDto = createUserAndRelatedRecords(data);
+            UserDto userDto = createUserAndRelatedRecords(data);
 
-        userRegisteredProducer.sendUserRegistered(userDto); // Publish user registration event
+            userRegisteredProducer.sendUserRegistered(userDto); // Publish user registration event
 
-        return userDto;
+            return userDto;
+        } catch (Exception e) {
+            if (e instanceof ConflictException || e instanceof UserNotFoundException) {
+                throw e;
+            }
+
+            log.error("Error while registering user: {}", e.getMessage(), e);
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     private void ensurePasswordMatches(String password, String confirmPassword) {
@@ -116,6 +140,65 @@ public class UserService {
     private void cacheUserVerificationToken(String email, String verificationCode) {
         int expiryInSeconds = Integer.parseInt(emailVerificationExpiryInSeconds);
 
-        cacheService.setValueWithExpiration("verification-token:" + email, verificationCode, expiryInSeconds, TimeUnit.SECONDS);
+        cacheService.setValueWithExpiration(this.getVerificationCacheKey(email), verificationCode, expiryInSeconds, TimeUnit.SECONDS);
+    }
+
+    private String getVerificationCacheKey(String email) {
+        return "verification-token:" + email;
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        try {
+            String encryptedToken = EncryptionUtil.encrypt(token);
+
+            User user = this.getUserByEmailToken(encryptedToken);
+
+            if (user == null) {
+                throw new ConflictException("Invalid or expired token");
+            }
+
+            String cachedToken = getUserVerificationTokenFromCache(user.getEmail());
+
+            if (!cachedToken.equals(encryptedToken)) {
+                throw new ConflictException("Invalid or expired token");
+            }
+
+            this.makeUserAsVerified(user);
+
+            cacheService.deleteValue(this.getVerificationCacheKey(user.getEmail()));
+        } catch (ConflictException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error while verifying user email: {}", e.getMessage(), e);
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
+    }
+
+    public User getUserByEmailToken(String token) {
+        return userRepository.findByEmailVerificationToken(token).orElse(null);
+    }
+
+    private String getUserVerificationTokenFromCache(String email) {
+        String verificationCode = cacheService.getValue(this.getVerificationCacheKey(email));
+
+        if (verificationCode == null) {
+            throw new ConflictException("Invalid or expired token");
+        }
+
+        return verificationCode;
+    }
+
+    private void makeUserAsVerified(User user) {
+        user.setIsActive(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerifiedAt(Instant.now());
+        userRepository.save(user);
+
+        UserVerification userVerification = userVerificationRepository.findUserVerification(user, UserVerificationType.EMAIL, UserVerificationChannel.EMAIL);
+
+        userVerification.setVerifiedAt(Instant.now());
+        userVerification.setStatus(UserVerificationStatus.COMPLETED);
+        userVerificationRepository.save(userVerification);
     }
 }

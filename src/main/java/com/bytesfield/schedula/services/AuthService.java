@@ -4,17 +4,21 @@ import com.bytesfield.schedula.dtos.LoginDto;
 import com.bytesfield.schedula.dtos.UserDto;
 import com.bytesfield.schedula.exceptions.ConflictException;
 import com.bytesfield.schedula.exceptions.InvalidCredentialsException;
+import com.bytesfield.schedula.exceptions.UserNotFoundException;
 import com.bytesfield.schedula.models.entities.User;
 import com.bytesfield.schedula.models.enums.JwtTokenType;
 import com.bytesfield.schedula.services.utils.JwtService;
 import com.bytesfield.schedula.validations.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ServerErrorException;
 
 import java.util.Date;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class AuthService {
 
@@ -28,11 +32,21 @@ public class AuthService {
     }
 
     public LoginDto loginUser(LoginRequest data) {
-        User user = userService.getUserByEmail(data.getEmail());
+        try {
+            User user = userService.getUserByEmail(data.getEmail());
 
-        ensureUserCanLogin(user, data.getPassword());
+            ensureUserCanLogin(user, data.getPassword());
 
-        return this.login(user);
+            return this.login(user);
+        } catch (Exception e) {
+            log.error("Error while logging in user: {}", e.getMessage(), e);
+
+            if (e instanceof ConflictException || e instanceof InvalidCredentialsException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     private void ensureUserCanLogin(User user, String password) {
@@ -69,40 +83,73 @@ public class AuthService {
     }
 
     public void logoutUser(UserDetails userDetails, HttpServletRequest request) {
-        User user = this.getUser(userDetails);
+        try {
+            User user = this.getUser(userDetails);
 
-        String token = this.extractTokenFromRequest(request);
+            String token = this.extractTokenFromRequest(request);
 
-        jwtService.invalidateAccessToken(token);
+            jwtService.invalidateAccessToken(token);
 
-        jwtService.deleteCachedAccessToken(user.getEmail());
+            jwtService.deleteCachedAccessToken(user.getEmail());
+
+        } catch (Exception e) {
+            log.error("Error while logging out user: {}", e.getMessage(), e);
+
+            if (e instanceof ConflictException || e instanceof UserNotFoundException || e instanceof InvalidCredentialsException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
+        }
     }
 
     private User getUser(UserDetails userDetails) {
-        User user = userService.getUserByEmail(userDetails.getUsername());
+        try {
+            User user = userService.getUserByEmail(userDetails.getUsername());
 
-        if (user == null) {
-            throw new ConflictException("User not found");
+            if (user == null) {
+                throw new UserNotFoundException("User not found");
+            }
+
+            return user;
+        } catch (Exception e) {
+            log.error("Error while logging out user: {}", e.getMessage(), e);
+
+            if (e instanceof ConflictException || e instanceof UserNotFoundException || e instanceof InvalidCredentialsException) {
+                throw e;
+            }
+
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
         }
-
-        return user;
     }
 
     private String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
+
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
+
         return null;
     }
 
     public LoginDto refreshToken(UserDetails userDetails, String refreshToken) {
-        User user = this.getUser(userDetails);
+        try {
+            User user = this.getUser(userDetails);
 
-        if (!jwtService.isTokenValid(refreshToken, JwtTokenType.REFRESH, userDetails)) {
-            throw new ConflictException("Invalid refresh token");
+            if (!jwtService.isTokenValid(refreshToken, JwtTokenType.REFRESH, userDetails)) {
+                throw new ConflictException("Invalid refresh token");
+            }
+
+            return this.login(user);
+        } catch (Exception e) {
+            log.error("Error while refreshing user token: {}", e.getMessage(), e);
+
+            if (e instanceof ConflictException || e instanceof UserNotFoundException) {
+                throw e;
+            }
+            
+            throw new ServerErrorException("Something went wrong. You can reach out to us", e);
         }
-
-        return this.login(user);
     }
 }
